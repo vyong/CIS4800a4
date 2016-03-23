@@ -6,14 +6,14 @@
 #include <string.h>
 #include <math.h>
 
-// #include <GL/gl.h>
-// #include <GL/glu.h>
-// #include <GL/glx.h>
-// #include <GL/glut.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <GL/glx.h>
+#include <GL/glut.h>
 
-#include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
-#include <GLUT/glut.h>
+// #include <OpenGL/gl.h>
+// #include <OpenGL/glu.h>
+// #include <GLUT/glut.h>
 
 	/* flags used to control the appearance of the image */
 int lineDrawing = 0;	// draw polygons as solid or lines
@@ -27,50 +27,105 @@ int width, height, depth, maxDepth = 0, lButtonPressed = 0, rButtonPressed = 0;
 float camX, camY, camZ;
 float lightX, lightY, lightZ;
 
+struct vectorStruct {
+	float x, y, z;
+};
+typedef struct vectorStruct Vector;
+
 struct rgbColour {
 	float red, green, blue;
 };
 typedef struct rgbColour rgb;
 
 struct Circles {
-	float x, y, z;
 	float radius;
+	struct vectorStruct * coord;
 	struct rgbColour * colours;
 	struct Circles * nextCir;
 };
 typedef struct Circles Circle;
 
 struct lights {
-	float x, y, z;
+	struct vectorStruct * coord;
 	struct rgbColour * colours;
 };
 typedef struct lights Light;
+
+struct rayStruct {
+	struct vectorStruct * start;
+	struct vectorStruct * direction;
+};
+typedef struct rayStruct Ray;
 
 // the key states. These variables will be zero
 //when no key is being presses
 float deltaAngle = 10;
 float deltaMove = 0;
 
-GLubyte  *Image[7];
-GLuint   textureID[7];
-
 Circle * head;
 Light * lightPoint;
+Ray * ray;
+
+GLubyte checkImage[1024][768][3];
+
+/* Subtract two vectors and return the resulting vector */
+Vector * vectorSub(Vector *v1, Vector *v2){
+	Vector * result;
+	result->x = v1->x - v2->x;
+	result->y = v1->y - v2->y;
+	result->z = v1->z - v2->z;
 
 
-void lightRotation(void) {
-	spin = spin + 1; /*MAC LINE */
-	//spin = spin + 0.1; //Ubuntu line
+	return result;
+}
 
-	if(spin >= 360) {
-		spin = spin - 360;
+/* Multiply two vectors and return the resulting scalar (dot product) */
+float vectorDot(Vector *v1, Vector *v2){
+	return v1->x * v2->x + v1->y * v2->y + v1->z * v2->z;
+}
+
+int rayIntersect(void){
+	float A, B, C, discriminant;
+	Vector * dist;
+	
+	A = vectorDot(ray->direction, ray->direction); 
+	
+	dist = vectorSub(ray->start, head->coord);
+	B = 2 * vectorDot(ray->direction, dist);
+	C = vectorDot(dist, dist) - (head->radius * head->radius);
+	
+	/* Solving the discriminant */
+	discriminant = B * B - 4 * A * C;
+	
+	/* If the discriminant is negative, there are no real roots.
+	 * Return false in that case as the ray misses the sphere.
+	 * Return true in all other cases (can be one or two intersections)
+	 */
+	if(discriminant < 0)
+		return 0;
+	else
+		return 1;
+}
+
+void calculatePixel (void){
+	int y, x, hit;
+	ray->start->z = 0;
+
+	for(y = 0; y < height; y++){
+		ray->start->y = y;
+		for(x = 0; x < width; x++){
+			ray->start->x = x;
+
+			hit = rayIntersect();
+
+			if (hit == 1) {
+				checkImage[x][y][0] = (GLubyte) 0;
+				checkImage[x][y][1] = (GLubyte) 0;
+				checkImage[x][y][2] = (GLubyte) 0;
+			}
+
+		}
 	}
-
-	lightX = cos((spin * M_PI)/180) * 4;
-	lightY = 3;
-	lightZ = sin((spin * M_PI)/180) * 4;
-	//printf("%f, %f, %f\n",lightX, lightY, lightZ);
-	glutPostRedisplay();
 }
 
 /*  Initialize material property and light source.
@@ -101,6 +156,7 @@ void init (void)
 	glEnable (GL_LIGHTING);
 	glEnable (GL_LIGHT0);
 	glEnable(GL_DEPTH_TEST);
+	calculatePixel();
 }
 
 void display (void)
@@ -115,9 +171,6 @@ GLfloat random[] = {1.0, 1.0, 1.0, 1.0};
 GLfloat position[] = { lightX, lightY, lightZ, 1.0 };
 GLfloat light_full_off[] = {0.0, 0.0, 0.0, 1.0};
 GLfloat light_diffuse[] = { 1.0, 1.0, 1.0, 1.0 };
-
-float bottomThirdLimit, topThirdLimit;
-float randomR, randomG, randomB;
 
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -135,65 +188,32 @@ float randomR, randomG, randomB;
 
 	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, light_gray);
 	glMaterialfv(GL_FRONT, GL_SPECULAR, light_gray);
-	//draw plane
-
-	glLightfv (GL_LIGHT0, GL_DIFFUSE, light_full_off);
-
-	glBegin(GL_TRIANGLES);
-		glVertex3f( 0,-0.5, 0);
-		glVertex3f( 0,-0.5,10);
-		glVertex3f(10,-0.5,10);
-
-		glVertex3f( 0,-0.5, 0);
-		glVertex3f(10,-0.5,10);
-		glVertex3f(10,-0.5, 0);
-	glEnd();
 
 	glLightfv (GL_LIGHT0, GL_DIFFUSE, light_diffuse);
 
-	/* turn texturing on */
-	if (textures == 1) {
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, textureID[textureFile]); //change texture
-		if(textureFile == 7){
-			textureFile = 0;
-		}
-	/* if textured, then use white as base colour */
-		glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, light_gray);
-	}
+	//glRasterPos2i(0,0);
+	glDrawPixels(width, height, GL_RGB, GL_UNSIGNED_BYTE, checkImage); 
 
-	glPushMatrix();
-
-	glTranslatef(5,0.5,5);
+	//glTranslatef(5,0.5,5);
 	glMaterialf(GL_FRONT, GL_SHININESS, 30);
 
 	
 
-	if (textures == 1){
-		glDisable(GL_TEXTURE_2D);
-	}
-	
-	glLightfv (GL_LIGHT0, GL_POSITION, position);
-
-	glTranslated (lightX, lightY, lightZ);
-	glutIdleFunc(lightRotation);
+	//glTranslated (lightX, lightY, lightZ);
 	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, white);
 	glMaterialfv(GL_FRONT, GL_SPECULAR, white);
-	glutWireSphere (0.1, 15, 15);
+	//glutWireSphere (0.1, 15, 15);
 	glEnable (GL_LIGHTING);
 
-	glPopMatrix ();
-
-	glPopMatrix ();
 	glFlush ();
 	glutSwapBuffers();
 }
 
 void reshape(int w, int h)
 {
-	camX = 10 * sin(deltaAngle * (M_PI/180)) + 5;
-	camY = 10;
-	camZ = 10 * cos(deltaAngle * (M_PI/180)) + 5;
+	camX = 3 * sin(deltaAngle * (M_PI/180)) + 5;
+	camY = 3;
+	camZ = 3 * cos(deltaAngle * (M_PI/180)) + 5;
 
 	glViewport (0, 0, (GLsizei) w, (GLsizei) h);
 	glMatrixMode (GL_PROJECTION);
@@ -202,10 +222,10 @@ void reshape(int w, int h)
 	glMatrixMode (GL_MODELVIEW);
 	glLoadIdentity ();
 
-	// Set the camera
-	gluLookAt(camX, camY, camZ,    // Look at point
-			5, 0, 5,
-			0, 1, 0); 
+	// // Set the camera
+	// gluLookAt(camX, camY, camZ,    // Look at point
+	// 		0, 0, 0,
+	// 		0, 1, 0); 
 }
 
 void keyboard(unsigned char key, int x, int y)
@@ -313,7 +333,7 @@ void motion(int x, int y) {
 		glLoadIdentity ();
 
 		gluLookAt(camX, camY, camZ,    // Look at point
-			5, 0, 5,
+			0, 0, 0,
 			0, 1, 0); 
 		display ();
 	}
@@ -366,19 +386,20 @@ Circle * curr, * node;
 				else {
 					printf("Light found\n");
 					lightPoint = (Light *)malloc(sizeof(Light));
+					lightPoint->coord = (Vector *)malloc(sizeof(Vector));
 					lightPoint->colours = (rgb *)malloc(sizeof(rgb));
 
 					for (x = 0; x < 6; x++)	{
 						buffer = strtok(NULL, "  ");
 						switch(x) {
 							case 0: //x
-								lightPoint->x = atof(buffer);
+								lightPoint->coord->x = atof(buffer);
 								break;
 							case 1: //y
-								lightPoint->y = atof(buffer);
+								lightPoint->coord->y = atof(buffer);
 								break;
 							case 2: //z
-								lightPoint->z = atof(buffer);
+								lightPoint->coord->z = atof(buffer);
 								break;
 							case 3: //r
 								lightPoint->colours->red = atof(buffer);
@@ -398,23 +419,27 @@ Circle * curr, * node;
 				//sphere
 				printf("Circle found\n");
 				node = (Circle *)malloc(sizeof(Circle));
+				node->coord = (Vector *)malloc(sizeof(Vector));
+				node->colours = (rgb *)malloc(sizeof(rgb));
 				node->nextCir = NULL;
 
 				for (x = 0; x < 7; x++)	{
 					curr = (Circle *)malloc(sizeof(Circle));
+					curr->coord = (Vector *)malloc(sizeof(Vector));
+					curr->colours = (rgb *)malloc(sizeof(rgb));
 					curr->nextCir = NULL;
 
 					buffer = strtok(NULL, "  ");
 
 					switch(x) {
 						case 0: //x
-							curr->x = atof(buffer);
+							curr->coord->x = atof(buffer);
 							break;
 						case 1: //y
-							curr->y = atof(buffer);
+							curr->coord->y = atof(buffer);
 							break;
 						case 2: //z
-							curr->z = atof(buffer);
+							curr->coord->z = atof(buffer);
 							break;
 						case 3: //R
 							curr->radius = atof(buffer);
@@ -451,12 +476,25 @@ Circle * curr, * node;
  *  Open window with initial window size, title bar, 
  *  RGBA display mode, and handle input events.
  */
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
+	int i, j;
 	height = 768;
 	width = 1024;
 	head = NULL;
 	lightPoint = NULL;
+	ray = (Ray *)malloc(sizeof(Ray));
+	ray->start = (Vector *)malloc(sizeof(Vector));
+	ray->direction = (Vector *)malloc(sizeof(Vector));
+
+	for(i = 0; i < 1024; i++){
+		for(j = 0; j < 768; j++){
+			//c = ((((i&0x8)==0)^((j&0x8))==0))*255; 
+			checkImage[i][j][0] = (GLubyte) 255;
+			checkImage[i][j][1] = (GLubyte) 255;
+			checkImage[i][j][2] = (GLubyte) 255;
+		}
+	}
+
 	readFile(argv);
 	glutInit(&argc, argv);
 	glutInitDisplayMode (GLUT_SINGLE | GLUT_RGBA | GLUT_DEPTH);
@@ -475,4 +513,3 @@ int main(int argc, char** argv)
 	glutMainLoop();
 	return 0; 
 }
-

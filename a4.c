@@ -101,6 +101,7 @@ int rayIntersect(void){
 	 * Return false in that case as the ray misses the sphere.
 	 * Return true in all other cases (can be one or two intersections)
 	 */
+	//printf("%f\n", discriminant);
 	if(discriminant < 0)
 		return 0;
 	else
@@ -109,11 +110,11 @@ int rayIntersect(void){
 
 void calculatePixel (void){
 	int y, x, hit;
-	ray->start->z = 0;
+	ray->start->z = -2000;
 
-	for(y = 0; y < height; y++){
+	for(y = 0; y < 40; y++){
 		ray->start->y = y;
-		for(x = 0; x < width; x++){
+		for(x = 0; x < 40; x++){
 			ray->start->x = x;
 
 			hit = rayIntersect();
@@ -122,9 +123,16 @@ void calculatePixel (void){
 				checkImage[x][y][0] = (GLubyte) 0;
 				checkImage[x][y][1] = (GLubyte) 0;
 				checkImage[x][y][2] = (GLubyte) 0;
+				printf("++");
 			}
-
+			else{
+				checkImage[x][y][0] = (GLubyte) 255;
+				checkImage[x][y][1] = (GLubyte) 255;
+				checkImage[x][y][2] = (GLubyte) 255;
+				printf("--");
+			}
 		}
+		printf("\n");
 	}
 }
 
@@ -412,6 +420,12 @@ Circle * curr, * node;
 								break;
 						}//end switch
 					}//end for
+					printf("%f\n", lightPoint->coord->x);
+					printf("%f\n", lightPoint->coord->y);
+					printf("%f\n", lightPoint->coord->z);
+					printf("%f\n", lightPoint->colours->red);
+					printf("%f\n", lightPoint->colours->green);
+					printf("%f\n", lightPoint->colours->blue);
 					readLight = 1;
 				}
 			}//end light read
@@ -423,11 +437,12 @@ Circle * curr, * node;
 				node->colours = (rgb *)malloc(sizeof(rgb));
 				node->nextCir = NULL;
 
+				curr = (Circle *)malloc(sizeof(Circle));
+				curr->coord = (Vector *)malloc(sizeof(Vector));
+				curr->colours = (rgb *)malloc(sizeof(rgb));
+				curr->nextCir = NULL;
+
 				for (x = 0; x < 7; x++)	{
-					curr = (Circle *)malloc(sizeof(Circle));
-					curr->coord = (Vector *)malloc(sizeof(Vector));
-					curr->colours = (rgb *)malloc(sizeof(rgb));
-					curr->nextCir = NULL;
 
 					buffer = strtok(NULL, "  ");
 
@@ -445,16 +460,23 @@ Circle * curr, * node;
 							curr->radius = atof(buffer);
 							break;
 						case 4: //r
-							lightPoint->colours->red = atof(buffer);
+							curr->colours->red = atof(buffer);
 							break;
 						case 5: //g
-							lightPoint->colours->green = atof(buffer);
+							curr->colours->green = atof(buffer);
 							break;
 						case 6:
-							lightPoint->colours->blue = atof(buffer);
+							curr->colours->blue = atof(buffer);
 							break;
 					}//end switch
 				}//end for
+				printf("%f\n", curr->coord->x);
+				printf("%f\n", curr->coord->y);
+				printf("%f\n", curr->coord->z);
+				printf("%f\n", curr->radius);
+				printf("%f\n", curr->colours->red);
+				printf("%f\n", curr->colours->green);
+				printf("%f\n", curr->colours->blue);
 
 				if(front == 0){
 					head = curr;

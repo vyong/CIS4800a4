@@ -15,6 +15,8 @@
 // #include <OpenGL/glu.h>
 // #include <GLUT/glut.h>
 
+#define min(a,b) (((a) < (b)) ? (a) : (b))
+
 	/* flags used to control the appearance of the image */
 int lineDrawing = 0;	// draw polygons as solid or lines
 int lighting = 1;	// use diffuse and specular lighting
@@ -24,7 +26,6 @@ float spin = 0, lightHeight = 5;
 int textureFile = 0;
 
 int width, height, depth, maxDepth = 0, lButtonPressed = 0, rButtonPressed = 0;
-float camX, camY, camZ;
 float lightX, lightY, lightZ;
 
 struct vectorStruct {
@@ -66,7 +67,7 @@ Circle * head;
 Light * lightPoint;
 Ray * ray;
 
-GLubyte checkImage[1024][768][3];
+unsigned char checkImage[1024][768][3];
 
 /* Subtract two vectors and return the resulting vector */
 Vector * vectorSub(Vector *v1, Vector *v2){
@@ -75,23 +76,26 @@ Vector * vectorSub(Vector *v1, Vector *v2){
 	result->y = v1->y - v2->y;
 	result->z = v1->z - v2->z;
 
-
 	return result;
 }
 
 /* Multiply two vectors and return the resulting scalar (dot product) */
-float vectorDot(Vector *v1, Vector *v2){
-	return v1->x * v2->x + v1->y * v2->y + v1->z * v2->z;
+float vectorDot(Vector * v1, Vector * v2){
+	float result;
+	result = v1->x * v2->x + v1->y * v2->y + v1->z * v2->z;
+
+	return result;
 }
 
-int rayIntersect(void){
-	float A, B, C, discriminant;
+int rayIntersect(float *t){
+	float A, B, C, discriminant, t0, t1, sqrtDiscriminant;
 	Vector * dist;
 	
 	A = vectorDot(ray->direction, ray->direction); 
 	
 	dist = vectorSub(ray->start, head->coord);
-	B = 2 * vectorDot(ray->direction, dist);
+
+	B = 2 * vectorDot(ray->direction, dist);\
 	C = vectorDot(dist, dist) - (head->radius * head->radius);
 	
 	/* Solving the discriminant */
@@ -102,37 +106,79 @@ int rayIntersect(void){
 	 * Return true in all other cases (can be one or two intersections)
 	 */
 	//printf("%f\n", discriminant);
-	if(discriminant < 0)
+	if(discriminant < 0){
 		return 0;
-	else
-		return 1;
+	}
+
+	else{
+		sqrtDiscriminant = sqrtf(sqrtDiscriminant);
+		t0 = (-B + sqrtDiscriminant)/2;
+		t1 = (-B - sqrtDiscriminant)/2;
+
+		if(t0 > t1){
+			t0 = t1;
+		}
+
+		if((t0 > 0.001f) && (t0 < *t)) {
+			printf("Circle found\n");
+			*t = t0;
+			return 1;
+		}
+		else {
+			return 0;
+		}
+	}
 }
 
 void calculatePixel (void){
-	int y, x, hit;
+	int y, x, hit, level;
+	float coef, t;
+	Circle * node, *intersectedCircle = NULL;
+	Vector * scaled, *newStart;
 	ray->start->z = -2000;
 
-	for(y = 0; y < 40; y++){
-		ray->start->y = y;
-		for(x = 0; x < 40; x++){
+
+	for(y = 0; y < 768; y++){
+		for(x = 0; x < 1024; x++){
+			hit = 0;
+			coef = 1.0;
+			node = head;
+			ray->start->y = y;
 			ray->start->x = x;
 
-			hit = rayIntersect();
+			while((coef > 0.0) && (level < 15)){
+				while(node != NULL){
+					t = 20000.0;
+					hit = rayIntersect(&t);
+
+					if(hit == 1){
+						intersectedCircle = node;
+					}
+					else{
+						node = node->nextCir;
+					}
+				}
+				if(intersectedCircle == NULL){
+					break;
+				}
+
+			}
+
 
 			if (hit == 1) {
-				checkImage[x][y][0] = (GLubyte) 0;
-				checkImage[x][y][1] = (GLubyte) 0;
-				checkImage[x][y][2] = (GLubyte) 0;
+				checkImage[x][y][0] = (unsigned char) 0;
+				checkImage[x][y][1] = (unsigned char) 0;
+				checkImage[x][y][2] = (unsigned char) 0;
 				printf("++");
 			}
 			else{
-				checkImage[x][y][0] = (GLubyte) 255;
-				checkImage[x][y][1] = (GLubyte) 255;
-				checkImage[x][y][2] = (GLubyte) 255;
-				printf("--");
+				checkImage[x][y][0] = (unsigned char) 255;
+				checkImage[x][y][1] = (unsigned char) 255;
+				checkImage[x][y][2] = (unsigned char) 255;
+				//printf("--");
 			}
 		}
-		printf("\n");
+		//printf("\n");
 	}
 }
 
@@ -219,10 +265,6 @@ GLfloat light_diffuse[] = { 1.0, 1.0, 1.0, 1.0 };
 
 void reshape(int w, int h)
 {
-	camX = 3 * sin(deltaAngle * (M_PI/180)) + 5;
-	camY = 3;
-	camZ = 3 * cos(deltaAngle * (M_PI/180)) + 5;
-
 	glViewport (0, 0, (GLsizei) w, (GLsizei) h);
 	glMatrixMode (GL_PROJECTION);
 	glLoadIdentity ();
@@ -243,119 +285,7 @@ void keyboard(unsigned char key, int x, int y)
 		case 'q':
 			exit(0);
 			break;
-		case '1':		// texture with  smooth shading
-			lineDrawing = 0;
-			lighting = 1;
-			smoothShading = 1;
-			textures = 1;
-			textureFile++;
-			init();
-			display();
-			break;
-		case '2':		// draw polygons as outlines
-			lineDrawing = 1;
-			lighting = 0;
-			smoothShading = 0;
-			textures = 0;
-			init();
-			display();
-			break;
-		case '3':		// draw polygons as filled
-			lineDrawing = 0;
-			lighting = 0;
-			smoothShading = 0;
-			textures = 0;
-			init();
-			display();
-			break;
-		case '4':		// diffuse and specular lighting, smooth shading
-			lineDrawing = 0;
-			lighting = 1;
-			smoothShading = 1;
-			textures = 0;
-			init();
-			display();
-			break;
-		
-		case 'w':		// draw polygons as outlines
-			gluLookAt(5, 5, 5,    // Look at point
-					  0, -20, 0,
-					  0, 1, 0); 
-			init();
-			display();
-			break;
-		case 'd':		// draw polygons as outlines
-			glRotatef(5, 0.0, 0.5, 0.0);
-			init();
-			display();
-			break;
-		case 'a':		// draw polygons as outlines
-			glRotatef(5, 1.0, -1.0, -1.0);
-			init();
-			display();
-			break;
-		case 's':		// draw polygons as outlines
-			glTranslatef(0.0, 0.0,-0.5);
-			init();
-			display();
-			break;
-		case 'f':		// draw polygons as outlines
-			glTranslatef(0.0, -1.0, 0.0);
-			init();
-			display();
-			break;
-		case 'v':		// draw polygons as outlines
-			glTranslatef(0.0, 1.0,0.0);
-			init();
-			display();
-			break;
 	}
-}
-
-void mouse(int button, int state, int x, int y) {
-	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) { //left button and pressed
-		lButtonPressed = x;
-	}
-	else if(button == GLUT_LEFT_BUTTON && state == GLUT_UP){
-		lButtonPressed = -1;
-	}
-
-	else if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) { //right button and pressed
-		rButtonPressed = y;
-	}
-	else {
-		rButtonPressed = -1;
-	}
-}
-
-void motion(int x, int y) {
-	if(lButtonPressed >= 0){
-
-		deltaAngle += 3;
-		camX = 10 * sin(deltaAngle * (M_PI/180)) + 5;
-		camY = 10;
-		camZ = 10 * cos(deltaAngle * (M_PI/180)) + 5;
-		
-
-		glMatrixMode (GL_MODELVIEW);
-		glLoadIdentity ();
-
-		gluLookAt(camX, camY, camZ,    // Look at point
-			0, 0, 0,
-			0, 1, 0); 
-		display ();
-	}
-
-	// else if(rButtonPressed >= 1){
-	// 	glMatrixMode (GL_MODELVIEW);
-	// 	glLoadIdentity ();
-
-	// 	gluLookAt(x, y, 0,    // Look at point
-	// 		5, 0, 5,
-	// 		0.0, 1.0, 0.0);   // Up vector
-	// 	display ();
-
-	// }
 }
 
 /* read data file and store in arrays */
@@ -511,9 +441,9 @@ int main(int argc, char** argv) {
 	for(i = 0; i < 1024; i++){
 		for(j = 0; j < 768; j++){
 			//c = ((((i&0x8)==0)^((j&0x8))==0))*255; 
-			checkImage[i][j][0] = (GLubyte) 255;
-			checkImage[i][j][1] = (GLubyte) 255;
-			checkImage[i][j][2] = (GLubyte) 255;
+			checkImage[i][j][0] = (unsigned char) 255;
+			checkImage[i][j][1] = (unsigned char) 255;
+			checkImage[i][j][2] = (unsigned char) 255;
 		}
 	}
 
@@ -528,10 +458,6 @@ int main(int argc, char** argv) {
 	glutReshapeFunc (reshape);
 	glutDisplayFunc(display);
 	glutKeyboardFunc (keyboard);
-	glutMouseFunc(mouse);
-	glutMotionFunc(motion);
-
-
 	glutMainLoop();
 	return 0; 
 }

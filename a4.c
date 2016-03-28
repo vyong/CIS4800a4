@@ -91,7 +91,28 @@ float vectorDot(Vector * v1, Vector * v2){
 	return result;
 }
 
-int rayIntersect(void){
+Vector * vectorScale (float x, Vector * v) {
+	Vector * result;
+	result = (Vector *)malloc(sizeof(Vector));
+	result->x = v->x * x;
+	result->y = v->y * x;
+	result->z = v->z * x;
+
+	return result;
+}
+
+Vector * vectorAdd (Vector * v1, Vector * v2){
+	Vector * result;
+	result = (Vector *)malloc(sizeof(Vector));
+	result->x = v1->x + v2->x;
+	result->y = v1->y + v2->y;
+	result->z = v1->z + v2->z;
+
+	return result;
+}
+
+
+int rayIntersect(Ray * r, Circle * c, float *t){
 	float A, B, C, discriminant, t0, t1, sqrtDiscriminant;
 	int result;
 	Vector * dist;
@@ -99,13 +120,13 @@ int rayIntersect(void){
 	//	return 0;
 	dist = (Vector *)malloc(sizeof(Vector));
 	
-	A = vectorDot(ray->direction, ray->direction); 
+	A = vectorDot(r->direction, r->direction); 
 
-	dist = vectorSub(ray->start, head->coord);
+	dist = vectorSub(r->start, c->coord);
 
-	B = 2 * vectorDot(ray->direction, dist);
+	B = 2 * vectorDot(r->direction, dist);
 
-	C = vectorDot(dist, dist) - (head->radius * head->radius);
+	C = vectorDot(dist, dist) - (c->radius * c->radius);
 	
 	/* Solving the discriminant */
 	discriminant = B * B - 4 * A * C;
@@ -127,8 +148,8 @@ int rayIntersect(void){
 			t0 = t1;
 		}
 
-		if((t0 > 0.001f) && (t0 < t)) {
-			t = t0;
+		if((t0 > 0.001f) && (t0 < *t)) {
+			*t = t0;
 			result = 1;
 		}
 		else {
@@ -142,13 +163,12 @@ int rayIntersect(void){
 }
 
 void calculatePixel (void){
-	int y, x, hit = 0, level;
+	int y, x, hit = 0, count;
+	float temp;
 	Circle * node, * intersectedCircle;
+	Vector  *scaled, *newStart, *normal, *distance;
+	Ray * lightRay;
 
-	node = (Circle *)malloc(sizeof(Circle));
-	node->coord = (Vector *)malloc(sizeof(Vector));
-	node->colours = (rgb *)malloc(sizeof(rgb));
-	node->nextCir = NULL;
 
 	for(y = 0; y < 768; y++){
 		for(x = 0; x < 1024; x++){
@@ -161,10 +181,12 @@ void calculatePixel (void){
 			ray->direction->y = 0;
 			ray->direction->z = 1;
 
-			//printf("AAAAAAAAA\n");
+			count = 0;
+
+			//find intersection
 			while(node != NULL){
 				t = 20000.0;
-				hit = rayIntersect();
+				hit = rayIntersect(ray, node, &t);
 
 
 				if(hit == 1){
@@ -173,30 +195,46 @@ void calculatePixel (void){
 					break;
 				}
 				else{
-					//printf("BBBBBB\n");
+					count++;
+					//printf("Count: %d\n", count);
 					node = node->nextCir;
 				}
 			}
 
 			if(hit == 1){
 				//printf("point reached\n");
+				scaled = vectorScale(t, ray->direction);
+				newStart = vectorAdd(ray->start, scaled);
+
+				//find normal
+				normal = vectorSub(newStart, intersectedCircle->coord);
+				temp = vectorDot(normal, normal);
+				if(temp == 0){
+					break;
+				}
+
+				temp = 1/sqrtf(temp);
+				normal = vectorScale(temp, normal);
+
+				//find light value
+				distance = vectorSub(lightPoint->coord, newStart);
+				if(vectorDot(normal, distance) <= 0.0){
+					continue;
+				}
+				t = sqrtf(vectorDot(distance, distance));
+				if(t <= 0.0){
+					continue;
+				}
+
+				lightRay->start = newStart;
+				lightRay->direction = vectorScale((1/t), distance);
+
+				//Shadow calculations
+
 				checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char) intersectedCircle->colours->red;
 				checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char) intersectedCircle->colours->green;
 				checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char) intersectedCircle->colours->blue;
 			}
-
-			// if (hit == 1) {
-			// 	checkImage[x][y][0] = (unsigned char) 0;
-			// 	checkImage[x][y][1] = (unsigned char) 0;
-			// 	checkImage[x][y][2] = (unsigned char) 0;
-			// 	printf("++");
-			// }
-			// else{
-			// 	checkImage[x][y][0] = (unsigned char) 255;
-			// 	checkImage[x][y][1] = (unsigned char) 255;
-			// 	checkImage[x][y][2] = (unsigned char) 255;
-			// 	//printf("--");
-			// }
 		}
 		//printf("\n");
 	}

@@ -16,6 +16,8 @@
 // #include <GLUT/glut.h>
 
 #define min(a,b) (((a) < (b)) ? (a) : (b))
+#define WIDTH 1024
+#define HEIGHT 768
 
 	/* flags used to control the appearance of the image */
 int lineDrawing = 0;	// draw polygons as solid or lines
@@ -62,16 +64,18 @@ typedef struct rayStruct Ray;
 //when no key is being presses
 float deltaAngle = 10;
 float deltaMove = 0;
+float t = 20000.0;
 
 Circle * head;
 Light * lightPoint;
 Ray * ray;
 
-unsigned char checkImage[1024][768][3];
+unsigned char checkImage[3 * WIDTH * HEIGHT];
 
 /* Subtract two vectors and return the resulting vector */
 Vector * vectorSub(Vector *v1, Vector *v2){
 	Vector * result;
+	result = (Vector *)malloc(sizeof(Vector));
 	result->x = v1->x - v2->x;
 	result->y = v1->y - v2->y;
 	result->z = v1->z - v2->z;
@@ -87,15 +91,20 @@ float vectorDot(Vector * v1, Vector * v2){
 	return result;
 }
 
-int rayIntersect(float *t){
+int rayIntersect(void){
 	float A, B, C, discriminant, t0, t1, sqrtDiscriminant;
+	int result;
 	Vector * dist;
+
+	//	return 0;
+	dist = (Vector *)malloc(sizeof(Vector));
 	
 	A = vectorDot(ray->direction, ray->direction); 
-	
+
 	dist = vectorSub(ray->start, head->coord);
 
-	B = 2 * vectorDot(ray->direction, dist);\
+	B = 2 * vectorDot(ray->direction, dist);
+
 	C = vectorDot(dist, dist) - (head->radius * head->radius);
 	
 	/* Solving the discriminant */
@@ -105,9 +114,8 @@ int rayIntersect(float *t){
 	 * Return false in that case as the ray misses the sphere.
 	 * Return true in all other cases (can be one or two intersections)
 	 */
-	//printf("%f\n", discriminant);
 	if(discriminant < 0){
-		return 0;
+		result = 0;
 	}
 
 	else{
@@ -119,64 +127,76 @@ int rayIntersect(float *t){
 			t0 = t1;
 		}
 
-		if((t0 > 0.001f) && (t0 < *t)) {
-			printf("Circle found\n");
-			*t = t0;
-			return 1;
+		if((t0 > 0.001f) && (t0 < t)) {
+			t = t0;
+			result = 1;
 		}
 		else {
-			return 0;
+			result = 0;
 		}
 	}
+
+	//printf("Result: %i\n", result);
+	free(dist);
+	return result;
 }
 
 void calculatePixel (void){
-	int y, x, hit, level;
-	float coef, t;
-	Circle * node, *intersectedCircle = NULL;
-	Vector * scaled, *newStart;
-	ray->start->z = -2000;
+	int y, x, hit = 0, level;
+	Circle * node, * intersectedCircle;
 
+	node = (Circle *)malloc(sizeof(Circle));
+	node->coord = (Vector *)malloc(sizeof(Vector));
+	node->colours = (rgb *)malloc(sizeof(rgb));
+	node->nextCir = NULL;
 
 	for(y = 0; y < 768; y++){
 		for(x = 0; x < 1024; x++){
-			hit = 0;
-			coef = 1.0;
 			node = head;
 			ray->start->y = y;
 			ray->start->x = x;
+			ray->start->z = -2000;
 
-			while((coef > 0.0) && (level < 15)){
-				while(node != NULL){
-					t = 20000.0;
-					hit = rayIntersect(&t);
+			ray->direction->x = 0;
+			ray->direction->y = 0;
+			ray->direction->z = 1;
 
-					if(hit == 1){
-						intersectedCircle = node;
-					}
-					else{
-						node = node->nextCir;
-					}
-				}
-				if(intersectedCircle == NULL){
+			//printf("AAAAAAAAA\n");
+			while(node != NULL){
+				t = 20000.0;
+				hit = rayIntersect();
+
+
+				if(hit == 1){
+					intersectedCircle = node;
+					//printf("AAAAAAAA\n");
 					break;
 				}
-
+				else{
+					//printf("BBBBBB\n");
+					node = node->nextCir;
+				}
 			}
 
+			if(hit == 1){
+				//printf("point reached\n");
+				checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char) intersectedCircle->colours->red;
+				checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char) intersectedCircle->colours->green;
+				checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char) intersectedCircle->colours->blue;
+			}
 
-			if (hit == 1) {
-				checkImage[x][y][0] = (unsigned char) 0;
-				checkImage[x][y][1] = (unsigned char) 0;
-				checkImage[x][y][2] = (unsigned char) 0;
-				printf("++");
-			}
-			else{
-				checkImage[x][y][0] = (unsigned char) 255;
-				checkImage[x][y][1] = (unsigned char) 255;
-				checkImage[x][y][2] = (unsigned char) 255;
-				//printf("--");
-			}
+			// if (hit == 1) {
+			// 	checkImage[x][y][0] = (unsigned char) 0;
+			// 	checkImage[x][y][1] = (unsigned char) 0;
+			// 	checkImage[x][y][2] = (unsigned char) 0;
+			// 	printf("++");
+			// }
+			// else{
+			// 	checkImage[x][y][0] = (unsigned char) 255;
+			// 	checkImage[x][y][1] = (unsigned char) 255;
+			// 	checkImage[x][y][2] = (unsigned char) 255;
+			// 	//printf("--");
+			// }
 		}
 		//printf("\n");
 	}
@@ -307,6 +327,12 @@ Circle * curr, * node;
 	/* the code to read the input file goes here */
 	/* numlevels is set to the number of lines in the file not including the first comment line */
 	else {
+
+		node = (Circle *)malloc(sizeof(Circle));
+		node->coord = (Vector *)malloc(sizeof(Vector));
+		node->colours = (rgb *)malloc(sizeof(rgb));
+		node->nextCir = NULL;
+
 		while (fgets(instr, sizeof(instr), fp)) {
 
 			buffer = strtok(instr, "  ");
@@ -322,7 +348,7 @@ Circle * curr, * node;
 				}
 
 				else {
-					printf("Light found\n");
+					//light
 					lightPoint = (Light *)malloc(sizeof(Light));
 					lightPoint->coord = (Vector *)malloc(sizeof(Vector));
 					lightPoint->colours = (rgb *)malloc(sizeof(rgb));
@@ -350,23 +376,17 @@ Circle * curr, * node;
 								break;
 						}//end switch
 					}//end for
-					printf("%f\n", lightPoint->coord->x);
-					printf("%f\n", lightPoint->coord->y);
-					printf("%f\n", lightPoint->coord->z);
-					printf("%f\n", lightPoint->colours->red);
-					printf("%f\n", lightPoint->colours->green);
-					printf("%f\n", lightPoint->colours->blue);
+					// printf("%f\n", lightPoint->coord->x);
+					// printf("%f\n", lightPoint->coord->y);
+					// printf("%f\n", lightPoint->coord->z);
+					// printf("%f\n", lightPoint->colours->red);
+					// printf("%f\n", lightPoint->colours->green);
+					// printf("%f\n", lightPoint->colours->blue);
 					readLight = 1;
 				}
 			}//end light read
 			else if (strcmp("sphere", buffer) == 0){
 				//sphere
-				printf("Circle found\n");
-				node = (Circle *)malloc(sizeof(Circle));
-				node->coord = (Vector *)malloc(sizeof(Vector));
-				node->colours = (rgb *)malloc(sizeof(rgb));
-				node->nextCir = NULL;
-
 				curr = (Circle *)malloc(sizeof(Circle));
 				curr->coord = (Vector *)malloc(sizeof(Vector));
 				curr->colours = (rgb *)malloc(sizeof(rgb));
@@ -400,27 +420,28 @@ Circle * curr, * node;
 							break;
 					}//end switch
 				}//end for
-				printf("%f\n", curr->coord->x);
-				printf("%f\n", curr->coord->y);
-				printf("%f\n", curr->coord->z);
-				printf("%f\n", curr->radius);
-				printf("%f\n", curr->colours->red);
-				printf("%f\n", curr->colours->green);
-				printf("%f\n", curr->colours->blue);
+				// printf("%f\n", curr->coord->x);
+				// printf("%f\n", curr->coord->y);
+				// printf("%f\n", curr->coord->z);
+				// printf("%f\n", curr->radius);
+				// printf("%f\n", curr->colours->red);
+				// printf("%f\n", curr->colours->green);
+				// printf("%f\n", curr->colours->blue);
 
 				if(front == 0){
+					//printf("FOUND FRONT\n");
 					head = curr;
 					node = curr;
 					front = 1;
 				}
 
 				else {
+					//printf("FOUND NEXT\n");
 					node->nextCir = curr;
 					node = curr;
 				}
-
 			}
-		}//ends if buffer = NULL
+		}//ends while
 	}//end else	
 }
 
@@ -429,9 +450,10 @@ Circle * curr, * node;
  *  RGBA display mode, and handle input events.
  */
 int main(int argc, char** argv) {
-	int i, j;
-	height = 768;
-	width = 1024;
+	int i, j, c;
+	Circle * test;
+	height = HEIGHT;
+	width = WIDTH;
 	head = NULL;
 	lightPoint = NULL;
 	ray = (Ray *)malloc(sizeof(Ray));
@@ -440,10 +462,10 @@ int main(int argc, char** argv) {
 
 	for(i = 0; i < 1024; i++){
 		for(j = 0; j < 768; j++){
-			//c = ((((i&0x8)==0)^((j&0x8))==0))*255; 
-			checkImage[i][j][0] = (unsigned char) 255;
-			checkImage[i][j][1] = (unsigned char) 255;
-			checkImage[i][j][2] = (unsigned char) 255;
+			// c = ((((i&0x8)==0)^((j&0x8))==0))*255; 
+			checkImage[(i + j*WIDTH)*3 + 0] = (unsigned char) 0;
+			checkImage[(i + j*WIDTH)*3 + 1] = (unsigned char) 0;
+			checkImage[(i + j*WIDTH)*3 + 2] = (unsigned char) 0;
 		}
 	}
 

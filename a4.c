@@ -163,16 +163,23 @@ int rayIntersect(Ray * r, Circle * c, float *t){
 }
 
 void calculatePixel (void){
-	int y, x, hit = 0, count;
-	float temp;
+	int y, x, hit = 0, inShadow = 0, level;
+	float temp, lambert, red, green, blue, coef, reflect;
 	Circle * node, * intersectedCircle;
-	Vector  *scaled, *newStart, *normal, *distance;
+	Vector  *scaled, *newStart, *normal, *distance, *tmp;
 	Ray * lightRay;
 
 
 	for(y = 0; y < 768; y++){
 		for(x = 0; x < 1024; x++){
 			node = head;
+			level = 0;
+			coef = 1.0;
+
+			red = 0;
+			green = 0;
+			blue = 0;
+
 			ray->start->y = y;
 			ray->start->x = x;
 			ray->start->z = -2000;
@@ -181,9 +188,8 @@ void calculatePixel (void){
 			ray->direction->y = 0;
 			ray->direction->z = 1;
 
-			count = 0;
-
-			//find intersection
+			//while(coef > 0.0){
+				//find intersection
 			while(node != NULL){
 				t = 20000.0;
 				hit = rayIntersect(ray, node, &t);
@@ -195,7 +201,6 @@ void calculatePixel (void){
 					break;
 				}
 				else{
-					count++;
 					//printf("Count: %d\n", count);
 					node = node->nextCir;
 				}
@@ -229,12 +234,44 @@ void calculatePixel (void){
 				lightRay->start = newStart;
 				lightRay->direction = vectorScale((1/t), distance);
 
-				//Shadow calculations
+				node = head;
+				while(node != NULL){
+					t = 20000.0;
+					inShadow = rayIntersect(lightRay, intersectedCircle, &t);
 
-				checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char) intersectedCircle->colours->red;
-				checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char) intersectedCircle->colours->green;
-				checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char) intersectedCircle->colours->blue;
+					if(inShadow == 1){
+						break;
+					}
+					else{
+						//printf("Count: %d\n", count);
+						node = node->nextCir;
+					}
+				}
+
+				if(inShadow == 0) {
+					lambert = vectorDot(lightRay->direction, normal);
+					red += lambert * (lightPoint->colours->red/255) * (intersectedCircle->colours->red/255);
+					green += lambert * (lightPoint->colours->green/255) * (intersectedCircle->colours->green/255);
+					blue += lambert * (lightPoint->colours->blue/255) * (intersectedCircle->colours->blue/255);
+
+				}
+
+				//Shadow calculations
 			}
+
+				// coef *= 0.5;
+				// ray->start = newStart;
+				// reflect = 2 * vectorDot(ray->direction, normal);
+				// tmp = vectorScale(reflect, normal);
+				// ray->direction = vectorSub(ray->direction, tmp);
+			//}
+			checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char)min(blue * 255, 255);
+			checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char)min(blue * 255, 255);
+			checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char)min(blue * 255, 255);
+
+			// checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char) intersectedCircle->colours->red * 0.6;
+			// checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char) intersectedCircle->colours->green * 0.6;
+			// checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char) intersectedCircle->colours->blue * 0.6;
 		}
 		//printf("\n");
 	}

@@ -18,6 +18,12 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define WIDTH 1024
 #define HEIGHT 768
+#define AMBIENT_K 0.3
+#define DIFFUSE_K 0.3
+
+#define AMBIENT_R 0.4
+#define AMBIENT_G 0.4
+#define AMBIENT_B 0.4
 
 	/* flags used to control the appearance of the image */
 int lineDrawing = 0;	// draw polygons as solid or lines
@@ -213,26 +219,25 @@ void calculatePixel (void){
 
 				//find normal
 				normal = vectorSub(newStart, intersectedCircle->coord);
-				temp = vectorDot(normal, normal);
-				if(temp == 0){
-					break;
-				}
 
 				temp = 1/sqrtf(temp);
 				normal = vectorScale(temp, normal);
 
 				//find light value
 				distance = vectorSub(lightPoint->coord, newStart);
-				if(vectorDot(normal, distance) <= 0.0){
-					continue;
-				}
 				t = sqrtf(vectorDot(distance, distance));
-				if(t <= 0.0){
-					continue;
-				}
 
 				lightRay->start = newStart;
 				lightRay->direction = vectorScale((1/t), distance);
+
+				if(vectorDot(normal, distance) <= 0.0){
+					//printf("Result: %f\n", vectorDot(normal, distance));
+					lambert = vectorDot(lightRay->direction, normal);
+					checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char) intersectedCircle->colours->red * 0.5;
+					checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char) intersectedCircle->colours->green * 0.5;
+					checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char) intersectedCircle->colours->blue * 0.5;	
+					continue;
+				}
 
 				node = head;
 				while(node != NULL){
@@ -240,6 +245,7 @@ void calculatePixel (void){
 					inShadow = rayIntersect(lightRay, intersectedCircle, &t);
 
 					if(inShadow == 1){
+						printf("IN SHADOW!\n");
 						break;
 					}
 					else{
@@ -256,6 +262,14 @@ void calculatePixel (void){
 
 				}
 
+				checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char) intersectedCircle->colours->red;
+				checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char) intersectedCircle->colours->green;
+				checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char) intersectedCircle->colours->blue;	
+
+				// checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char)min(blue * 255, 255);
+				// checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char)min(blue * 255, 255);
+				// checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char)min(blue * 255, 255);
+
 				//Shadow calculations
 			}
 
@@ -265,13 +279,8 @@ void calculatePixel (void){
 				// tmp = vectorScale(reflect, normal);
 				// ray->direction = vectorSub(ray->direction, tmp);
 			//}
-			checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char)min(blue * 255, 255);
-			checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char)min(blue * 255, 255);
-			checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char)min(blue * 255, 255);
 
-			// checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char) intersectedCircle->colours->red * 0.6;
-			// checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char) intersectedCircle->colours->green * 0.6;
-			// checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char) intersectedCircle->colours->blue * 0.6;
+			
 		}
 		//printf("\n");
 	}

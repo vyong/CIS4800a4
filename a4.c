@@ -6,26 +6,27 @@
 #include <string.h>
 #include <math.h>
 
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glx.h>
-#include <GL/glut.h>
+// #include <GL/gl.h>
+// #include <GL/glu.h>
+// #include <GL/glx.h>
+// #include <GL/glut.h>
 
-// #include <OpenGL/gl.h>
-// #include <OpenGL/glu.h>
-// #include <GLUT/glut.h>
+#include <OpenGL/gl.h>
+#include <OpenGL/glu.h>
+#include <GLUT/glut.h>
 
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define WIDTH 1024
 #define HEIGHT 768
-#define AMBIENT_K 0.3
-#define DIFFUSE_K 0.3
+#define AMBIENT_K 0.5
+#define DIFFUSE_K 0.5
+#define SPECULAR_K 0.3
 
 #define AMBIENT_R 0.4
 #define AMBIENT_G 0.4
 #define AMBIENT_B 0.4
 
-	/* flags used to control the appearance of the image */
+/* flags used to control the appearance of the image */
 int lineDrawing = 0;	// draw polygons as solid or lines
 int lighting = 1;	// use diffuse and specular lighting
 int smoothShading = 1;  // smooth or flat shading
@@ -33,8 +34,7 @@ int textures = 1;
 float spin = 0, lightHeight = 5;
 int textureFile = 0;
 
-int width, height, depth, maxDepth = 0, lButtonPressed = 0, rButtonPressed = 0;
-float lightX, lightY, lightZ;
+int width, height;
 
 struct vectorStruct {
 	float x, y, z;
@@ -119,7 +119,7 @@ Vector * vectorAdd (Vector * v1, Vector * v2){
 
 
 int rayIntersect(Ray * r, Circle * c, float *t){
-	float A, B, C, discriminant, t0, t1, sqrtDiscriminant;
+	float A, B, C, discriminant, t0, t1, sqrtDiscriminant = 0;
 	int result;
 	Vector * dist;
 
@@ -169,8 +169,8 @@ int rayIntersect(Ray * r, Circle * c, float *t){
 }
 
 void calculatePixel (void){
-	int y, x, hit = 0, inShadow = 0, level;
-	float temp, lambert, red, green, blue, coef, reflect;
+	int y, x, hit = 0, inShadow = 0;
+	float temp, lambert, red, green, blue, redIllumination, greenIllumination, blueIllumination;
 	Circle * node, * intersectedCircle;
 	Vector  *scaled, *newStart, *normal, *distance, *tmp;
 	Ray * lightRay;
@@ -179,12 +179,10 @@ void calculatePixel (void){
 	for(y = 0; y < 768; y++){
 		for(x = 0; x < 1024; x++){
 			node = head;
-			level = 0;
-			coef = 1.0;
 
-			red = 0;
-			green = 0;
-			blue = 0;
+			redIllumination = 0;
+			greenIllumination = 0;
+			blueIllumination = 0;
 
 			ray->start->y = y;
 			ray->start->x = x;
@@ -217,116 +215,101 @@ void calculatePixel (void){
 				scaled = vectorScale(t, ray->direction);
 				newStart = vectorAdd(ray->start, scaled);
 
-				//find normal
+				//find normal for new vector
 				normal = vectorSub(newStart, intersectedCircle->coord);
+				temp = vectorDot(normal, normal);
+
 
 				temp = 1/sqrtf(temp);
 				normal = vectorScale(temp, normal);
 
 				//find light value
 				distance = vectorSub(lightPoint->coord, newStart);
+
 				t = sqrtf(vectorDot(distance, distance));
+				if(t <= 0.0){
+					continue;
+				}
 
 				lightRay->start = newStart;
 				lightRay->direction = vectorScale((1/t), distance);
 
-				if(vectorDot(normal, distance) <= 0.0){
-					//printf("Result: %f\n", vectorDot(normal, distance));
-					lambert = vectorDot(lightRay->direction, normal);
-					checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char) intersectedCircle->colours->red * 0.5;
-					checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char) intersectedCircle->colours->green * 0.5;
-					checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char) intersectedCircle->colours->blue * 0.5;	
-					continue;
+				lambert = vectorDot(lightRay->direction, normal);
+				//printf("lambert: %f\n", lambert);
+				redIllumination = (intersectedCircle->colours->red * AMBIENT_K) + (intersectedCircle->colours->red * DIFFUSE_K * lambert);
+				greenIllumination = (intersectedCircle->colours->green * AMBIENT_K) + (intersectedCircle->colours->green * DIFFUSE_K * lambert);
+				blueIllumination = (intersectedCircle->colours->blue * AMBIENT_K) + (intersectedCircle->colours->blue * DIFFUSE_K * lambert);
+
+
+				// if(vectorDot(normal, distance) <= 0.0){
+				// 	//printf("Result: %f\n", vectorDot(normal, distance));
+					
+				// 	checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char) intersectedCircle->colours->red * 0.3;
+				// 	checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char) intersectedCircle->colours->green * 0.3;
+				// 	checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char) intersectedCircle->colours->blue * 0.3;	
+				// 	continue;
+				// }
+
+				// node = head;
+				// while(node != NULL){
+				// 	t = 20000.0;
+				// 	inShadow = rayIntersect(lightRay, intersectedCircle, &t);
+
+				// 	if(inShadow == 1){
+				// 		break;
+				// 	}
+				// 	else{
+				// 		//printf("Count: %d\n", count);
+				// 		node = node->nextCir;
+				// 	}
+				// }
+
+				// if(inShadow == 0) {
+				// 	lambert = vectorDot(lightRay->direction, normal);
+				// 	red += lambert * (lightPoint->colours->red/255) * (intersectedCircle->colours->red/255);
+				// 	green += lambert * (lightPoint->colours->green/255) * (intersectedCircle->colours->green/255);
+				// 	blue += lambert * (lightPoint->colours->blue/255) * (intersectedCircle->colours->blue/255);
+
+				// }
+				if(redIllumination < 0){
+					redIllumination = 0;
+				}
+				else if (redIllumination > 255){
+					redIllumination = 255;
 				}
 
-				node = head;
-				while(node != NULL){
-					t = 20000.0;
-					inShadow = rayIntersect(lightRay, intersectedCircle, &t);
-
-					if(inShadow == 1){
-						printf("IN SHADOW!\n");
-						break;
-					}
-					else{
-						//printf("Count: %d\n", count);
-						node = node->nextCir;
-					}
+				if(greenIllumination < 0){
+					greenIllumination = 0;
+				}
+				else if (greenIllumination > 255){
+					greenIllumination = 255;
 				}
 
-				if(inShadow == 0) {
-					lambert = vectorDot(lightRay->direction, normal);
-					red += lambert * (lightPoint->colours->red/255) * (intersectedCircle->colours->red/255);
-					green += lambert * (lightPoint->colours->green/255) * (intersectedCircle->colours->green/255);
-					blue += lambert * (lightPoint->colours->blue/255) * (intersectedCircle->colours->blue/255);
-
+				if(blueIllumination < 0){
+					blueIllumination = 0;
+				}
+				else if (blueIllumination > 255){
+					blueIllumination = 255;
 				}
 
-				checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char) intersectedCircle->colours->red;
-				checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char) intersectedCircle->colours->green;
-				checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char) intersectedCircle->colours->blue;	
 
-				// checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char)min(blue * 255, 255);
-				// checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char)min(blue * 255, 255);
-				// checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char)min(blue * 255, 255);
-
-				//Shadow calculations
-			}
-
-				// coef *= 0.5;
-				// ray->start = newStart;
-				// reflect = 2 * vectorDot(ray->direction, normal);
-				// tmp = vectorScale(reflect, normal);
-				// ray->direction = vectorSub(ray->direction, tmp);
-			//}
-
-			
+				checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char) redIllumination * 255;
+				checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char) greenIllumination * 255;
+				checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char) blueIllumination * 255;	
+			}			
 		}
-		//printf("\n");
 	}
-}
-
-/*  Initialize material property and light source.
- */
-void init (void)
-{
-	GLfloat light_ambient[] = { 0.0, 0.0, 0.0, 1.0 };
-	GLfloat light_diffuse[] = { 1.0, 1.0, 1.0, 1.0 };
-	GLfloat light_specular[] = { 1.0, 1.0, 1.0, 1.0 };
-	GLfloat light_full_off[] = {0.0, 0.0, 0.0, 1.0};
-	GLfloat light_full_on[] = {1.0, 1.0, 1.0, 1.0};
-
-	GLfloat light_position[] = { 0.5, 1.0, 1.0, 0.0 };
-
-	/* if lighting is turned on then use ambient, diffuse and specular
-		lights, otherwise use ambient lighting only */
-	if (lighting == 1) {
-		glLightfv (GL_LIGHT0, GL_AMBIENT, light_ambient);
-		glLightfv (GL_LIGHT0, GL_DIFFUSE, light_diffuse);
-		glLightfv (GL_LIGHT0, GL_SPECULAR, light_specular);
-	} else {
-		glLightfv (GL_LIGHT0, GL_AMBIENT, light_full_on);
-		glLightfv (GL_LIGHT0, GL_DIFFUSE, light_full_off);
-		glLightfv (GL_LIGHT0, GL_SPECULAR, light_full_off);
-	}
-	glLightfv (GL_LIGHT0, GL_POSITION, light_position);
-	
-	glEnable (GL_LIGHTING);
-	glEnable (GL_LIGHT0);
-	glEnable(GL_DEPTH_TEST);
-	calculatePixel();
+	/* free
+	Circle * node, * intersectedCircle;
+	Vector  *scaled, *newStart, *normal, *distance, *tmp;
+	Ray * lightRay;
+	*/
 }
 
 void display (void)
 {
-GLfloat blue[]  = {0.0, 0.0, 1.0, 1.0};
-GLfloat red[]   = {1.0, 0.0, 0.0, 1.0};
-GLfloat green[] = {0.0, 1.0, 0.0, 1.0};
 GLfloat white[] = {1.0, 1.0, 1.0, 1.0};
 GLfloat light_gray[] = {0.8, 0.8, 0.8, 0.8};
-GLfloat brown[] = {0.5, 0.35, 0.05, 0.35};
-GLfloat random[] = {1.0, 1.0, 1.0, 1.0};
-GLfloat position[] = { lightX, lightY, lightZ, 1.0 };
 GLfloat light_full_off[] = {0.0, 0.0, 0.0, 1.0};
 GLfloat light_diffuse[] = { 1.0, 1.0, 1.0, 1.0 };
 
@@ -365,21 +348,6 @@ GLfloat light_diffuse[] = { 1.0, 1.0, 1.0, 1.0 };
 
 	glFlush ();
 	glutSwapBuffers();
-}
-
-void reshape(int w, int h)
-{
-	glViewport (0, 0, (GLsizei) w, (GLsizei) h);
-	glMatrixMode (GL_PROJECTION);
-	glLoadIdentity ();
-	gluPerspective(45.0, (GLfloat)w/(GLfloat)h, 1.0, 1000.0);
-	glMatrixMode (GL_MODELVIEW);
-	glLoadIdentity ();
-
-	// // Set the camera
-	// gluLookAt(camX, camY, camZ,    // Look at point
-	// 		0, 0, 0,
-	// 		0, 1, 0); 
 }
 
 void keyboard(unsigned char key, int x, int y)
@@ -460,12 +428,6 @@ Circle * curr, * node;
 								break;
 						}//end switch
 					}//end for
-					// printf("%f\n", lightPoint->coord->x);
-					// printf("%f\n", lightPoint->coord->y);
-					// printf("%f\n", lightPoint->coord->z);
-					// printf("%f\n", lightPoint->colours->red);
-					// printf("%f\n", lightPoint->colours->green);
-					// printf("%f\n", lightPoint->colours->blue);
 					readLight = 1;
 				}
 			}//end light read
@@ -504,23 +466,12 @@ Circle * curr, * node;
 							break;
 					}//end switch
 				}//end for
-				// printf("%f\n", curr->coord->x);
-				// printf("%f\n", curr->coord->y);
-				// printf("%f\n", curr->coord->z);
-				// printf("%f\n", curr->radius);
-				// printf("%f\n", curr->colours->red);
-				// printf("%f\n", curr->colours->green);
-				// printf("%f\n", curr->colours->blue);
-
 				if(front == 0){
-					//printf("FOUND FRONT\n");
 					head = curr;
 					node = curr;
 					front = 1;
 				}
-
 				else {
-					//printf("FOUND NEXT\n");
 					node->nextCir = curr;
 					node = curr;
 				}
@@ -544,26 +495,31 @@ int main(int argc, char** argv) {
 	ray->start = (Vector *)malloc(sizeof(Vector));
 	ray->direction = (Vector *)malloc(sizeof(Vector));
 
-	for(i = 0; i < 1024; i++){
-		for(j = 0; j < 768; j++){
-			// c = ((((i&0x8)==0)^((j&0x8))==0))*255; 
-			checkImage[(i + j*WIDTH)*3 + 0] = (unsigned char) 0;
-			checkImage[(i + j*WIDTH)*3 + 1] = (unsigned char) 0;
-			checkImage[(i + j*WIDTH)*3 + 2] = (unsigned char) 0;
-		}
-	}
-
 	readFile(argv);
 	glutInit(&argc, argv);
 	glutInitDisplayMode (GLUT_SINGLE | GLUT_RGBA | GLUT_DEPTH);
 	glutInitWindowPosition(80, 80);
 	glutInitWindowSize (1024, 768);
 	glutCreateWindow (argv[0]);
-	init();
-	//loadTexture();
-	glutReshapeFunc (reshape);
+	calculatePixel();
 	glutDisplayFunc(display);
 	glutKeyboardFunc (keyboard);
 	glutMainLoop();
+
+	test = head;
+	while(test != NULL){
+		head = test->nextCir;
+		free(test->coord);
+		free(test->colours);
+		free(test);
+		test = head;
+	}
+	free(lightPoint->colours);
+	free(lightPoint->coord);
+	free(lightPoint);
+	free(ray->direction);
+	free(ray->start);
+	free(ray);
+	free(head);
 	return 0; 
 }

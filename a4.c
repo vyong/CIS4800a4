@@ -254,6 +254,10 @@ void calculatePixel (void){
 				// greenIllumination = (intersectedCircle->colours->green * DIFFUSE_K * lambert);
 				// blueIllumination = (intersectedCircle->colours->blue * DIFFUSE_K * lambert);
 
+				redIllumination = (intersectedCircle->colours->red * AMBIENT_K) + (intersectedCircle->colours->red * DIFFUSE_K * lambert);
+				greenIllumination = (intersectedCircle->colours->green * AMBIENT_K) + (intersectedCircle->colours->green * DIFFUSE_K * lambert);
+				blueIllumination = (intersectedCircle->colours->blue * AMBIENT_K) + (intersectedCircle->colours->blue * DIFFUSE_K * lambert);
+
 				// redIllumination = lightPoint->colours->red * SPECULAR_K * specLight;
 				// greenIllumination = lightPoint->colours->green * SPECULAR_K * specLight;
 				// blueIllumination = lightPoint->colours->blue * SPECULAR_K * specLight;
@@ -341,36 +345,8 @@ GLfloat light_diffuse[] = { 1.0, 1.0, 1.0, 1.0 };
 
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	/* draw surfaces as either smooth or flat shaded */
-	if (smoothShading == 1)
-		glShadeModel(GL_SMOOTH);
-	else
-		glShadeModel(GL_FLAT);
-
-	/* draw polygons as either solid or outlines */
-	if (lineDrawing == 1)
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	else 
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, light_gray);
-	glMaterialfv(GL_FRONT, GL_SPECULAR, light_gray);
-
-	glLightfv (GL_LIGHT0, GL_DIFFUSE, light_diffuse);
-
 	//glRasterPos2i(0,0);
 	glDrawPixels(width, height, GL_RGB, GL_UNSIGNED_BYTE, checkImage); 
-
-	//glTranslatef(5,0.5,5);
-	glMaterialf(GL_FRONT, GL_SHININESS, 30);
-
-	
-
-	//glTranslated (lightX, lightY, lightZ);
-	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, white);
-	glMaterialfv(GL_FRONT, GL_SPECULAR, white);
-	//glutWireSphere (0.1, 15, 15);
-	glEnable (GL_LIGHTING);
 
 	glFlush ();
 	glutSwapBuffers();

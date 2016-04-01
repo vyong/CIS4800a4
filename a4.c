@@ -18,9 +18,9 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define WIDTH 1024
 #define HEIGHT 768
-#define AMBIENT_K 0.3
-#define DIFFUSE_K 0.3
-#define SPECULAR_K 0.3
+#define AMBIENT_K 0.5
+#define DIFFUSE_K 0.5
+#define SPECULAR_K 0.5
 
 #define AMBIENT_R 0.4
 #define AMBIENT_G 0.4
@@ -258,14 +258,14 @@ void calculatePixel (void){
 				// greenIllumination = lightPoint->colours->green * SPECULAR_K * specLight;
 				// blueIllumination = lightPoint->colours->blue * SPECULAR_K * specLight;
 
-				redIllumination = ((intersectedCircle->colours->red * AMBIENT_K) + ( intersectedCircle->colours->red * DIFFUSE_K * lambert + lightPoint->colours->red * SPECULAR_K * specLight)) * 255;
-				greenIllumination = ((intersectedCircle->colours->green * AMBIENT_K) + ( intersectedCircle->colours->green * DIFFUSE_K * lambert + lightPoint->colours->green * SPECULAR_K * specLight)) * 25;
-				blueIllumination = ((intersectedCircle->colours->blue * AMBIENT_K) + ( intersectedCircle->colours->blue * DIFFUSE_K * lambert + lightPoint->colours->blue * SPECULAR_K * specLight)) * 255;
+				// redIllumination = ((intersectedCircle->colours->red * AMBIENT_K) + ( intersectedCircle->colours->red * DIFFUSE_K * lambert + lightPoint->colours->red * SPECULAR_K * specLight));
+				// greenIllumination = ((intersectedCircle->colours->green * AMBIENT_K) + ( intersectedCircle->colours->green * DIFFUSE_K * lambert + lightPoint->colours->green * SPECULAR_K * specLight));
+				// blueIllumination = ((intersectedCircle->colours->blue * AMBIENT_K) + ( intersectedCircle->colours->blue * DIFFUSE_K * lambert + lightPoint->colours->blue * SPECULAR_K * specLight));
 
 
-				redIllumination = intersectedCircle->colours->red;
-				greenIllumination = intersectedCircle->colours->green;
-				blueIllumination = intersectedCircle->colours->blue;
+				// redIllumination = intersectedCircle->colours->red;
+				// greenIllumination = intersectedCircle->colours->green;
+				// blueIllumination = intersectedCircle->colours->blue;
 
 				// if(vectorDot(normal, distance) <= 0.0){
 				// 	//printf("Result: %f\n", vectorDot(normal, distance));

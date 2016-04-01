@@ -263,9 +263,9 @@ void calculatePixel (void){
 				blueIllumination = ((intersectedCircle->colours->blue * AMBIENT_K) + ( intersectedCircle->colours->blue * DIFFUSE_K * lambert + lightPoint->colours->blue * SPECULAR_K * specLight)) * 255;
 
 
-				// redIllumination = intersectedCircle->colours->red;
-				// greenIllumination = intersectedCircle->colours->green;
-				// blueIllumination = intersectedCircle->colours->blue;
+				redIllumination = intersectedCircle->colours->red;
+				greenIllumination = intersectedCircle->colours->green;
+				blueIllumination = intersectedCircle->colours->blue;
 
 				// if(vectorDot(normal, distance) <= 0.0){
 				// 	//printf("Result: %f\n", vectorDot(normal, distance));

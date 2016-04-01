@@ -156,7 +156,7 @@ int rayIntersect(Ray * r, Circle * c, float *t){
 	}
 
 	else{
-		sqrtDiscriminant = sqrtf(sqrtDiscriminant);
+		sqrtDiscriminant = sqrtf(discriminant);
 		t0 = (-B + sqrtDiscriminant)/2;
 		t1 = (-B - sqrtDiscriminant)/2;
 

@@ -18,8 +18,8 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define WIDTH 1024
 #define HEIGHT 768
-#define AMBIENT_K 0.5
-#define DIFFUSE_K 0.5
+#define AMBIENT_K 0.3
+#define DIFFUSE_K 0.3
 #define SPECULAR_K 0.3
 
 #define AMBIENT_R 0.4
@@ -117,6 +117,16 @@ Vector * vectorAdd (Vector * v1, Vector * v2){
 	return result;
 }
 
+Vector * calculateReflection(Vector * ray, Vector * normal, float reflect) {
+	Vector * result;
+	result = (Vector *)malloc(sizeof(Vector));
+	result->x = ray->x - 2 * reflect * normal->x;
+	result->y = ray->y - 2 * reflect * normal->y;
+	result->z = ray->z - 2 * reflect * normal->z;
+
+	return result;
+}
+
 
 int rayIntersect(Ray * r, Circle * c, float *t){
 	float A, B, C, discriminant, t0, t1, sqrtDiscriminant = 0;
@@ -170,9 +180,9 @@ int rayIntersect(Ray * r, Circle * c, float *t){
 
 void calculatePixel (void){
 	int y, x, hit = 0, inShadow = 0;
-	float temp, lambert, red, green, blue, redIllumination, greenIllumination, blueIllumination;
+	float temp, lambert, reflectDot, specLight, redIllumination, greenIllumination, blueIllumination;
 	Circle * node, * intersectedCircle;
-	Vector  *scaled, *newStart, *normal, *distance, *tmp;
+	Vector  *scaled, *newStart, *normal, *distance, *reflection;
 	Ray * lightRay;
 
 
@@ -201,11 +211,9 @@ void calculatePixel (void){
 
 				if(hit == 1){
 					intersectedCircle = node;
-					//printf("AAAAAAAA\n");
 					break;
 				}
 				else{
-					//printf("Count: %d\n", count);
 					node = node->nextCir;
 				}
 			}
@@ -218,28 +226,46 @@ void calculatePixel (void){
 				//find normal for new vector
 				normal = vectorSub(newStart, intersectedCircle->coord);
 				temp = vectorDot(normal, normal);
-
-
 				temp = 1/sqrtf(temp);
 				normal = vectorScale(temp, normal);
 
 				//find light value
 				distance = vectorSub(lightPoint->coord, newStart);
-
 				t = sqrtf(vectorDot(distance, distance));
-				if(t <= 0.0){
-					continue;
-				}
+				// if(t <= 0.0){
+				// 	continue;
+				// }
 
+				//used to get dot product of N . L
 				lightRay->start = newStart;
 				lightRay->direction = vectorScale((1/t), distance);
-
 				lambert = vectorDot(lightRay->direction, normal);
-				//printf("lambert: %f\n", lambert);
-				redIllumination = (intersectedCircle->colours->red * AMBIENT_K) + (intersectedCircle->colours->red * DIFFUSE_K * lambert);
-				greenIllumination = (intersectedCircle->colours->green * AMBIENT_K) + (intersectedCircle->colours->green * DIFFUSE_K * lambert);
-				blueIllumination = (intersectedCircle->colours->blue * AMBIENT_K) + (intersectedCircle->colours->blue * DIFFUSE_K * lambert);
 
+				//used to get (R . N)^n
+				reflectDot = vectorDot(ray->direction, normal);
+				reflection = calculateReflection(ray->direction, normal, reflectDot);
+				specLight = pow(vectorDot(reflection, newStart), 20);
+
+				// redIllumination = (intersectedCircle->colours->red * AMBIENT_K);
+				// greenIllumination = (intersectedCircle->colours->green * AMBIENT_K);
+				// blueIllumination = (intersectedCircle->colours->blue * AMBIENT_K);
+
+				// redIllumination = (intersectedCircle->colours->red * DIFFUSE_K * lambert);
+				// greenIllumination = (intersectedCircle->colours->green * DIFFUSE_K * lambert);
+				// blueIllumination = (intersectedCircle->colours->blue * DIFFUSE_K * lambert);
+
+				// redIllumination = lightPoint->colours->red * SPECULAR_K * specLight;
+				// greenIllumination = lightPoint->colours->green * SPECULAR_K * specLight;
+				// blueIllumination = lightPoint->colours->blue * SPECULAR_K * specLight;
+
+				redIllumination = ((intersectedCircle->colours->red * AMBIENT_K) + ( intersectedCircle->colours->red * DIFFUSE_K * lambert + lightPoint->colours->red * SPECULAR_K * specLight)) * 255;
+				greenIllumination = ((intersectedCircle->colours->green * AMBIENT_K) + ( intersectedCircle->colours->green * DIFFUSE_K * lambert + lightPoint->colours->green * SPECULAR_K * specLight)) * 25;
+				blueIllumination = ((intersectedCircle->colours->blue * AMBIENT_K) + ( intersectedCircle->colours->blue * DIFFUSE_K * lambert + lightPoint->colours->blue * SPECULAR_K * specLight)) * 255;
+
+
+				// redIllumination = intersectedCircle->colours->red;
+				// greenIllumination = intersectedCircle->colours->green;
+				// blueIllumination = intersectedCircle->colours->blue;
 
 				// if(vectorDot(normal, distance) <= 0.0){
 				// 	//printf("Result: %f\n", vectorDot(normal, distance));
@@ -293,9 +319,9 @@ void calculatePixel (void){
 				}
 
 
-				checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char) redIllumination * 255;
-				checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char) greenIllumination * 255;
-				checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char) blueIllumination * 255;	
+				checkImage[(x + y*WIDTH)*3 + 0] = (unsigned char) redIllumination;
+				checkImage[(x + y*WIDTH)*3 + 1] = (unsigned char) greenIllumination;
+				checkImage[(x + y*WIDTH)*3 + 2] = (unsigned char) blueIllumination;
 			}			
 		}
 	}

@@ -124,6 +124,8 @@ Vector * calculateReflection(Vector * ray, Vector * normal, float reflect) {
 	result->y = ray->y - 2 * reflect * normal->y;
 	result->z = ray->z - 2 * reflect * normal->z;
 
+	printf("x: %f y: %f z: %f\n", result->x, result->y, result->z);
+
 	return result;
 }
 
@@ -244,7 +246,7 @@ void calculatePixel (void){
 				//used to get (R . N)^n
 				reflectDot = vectorDot(ray->direction, normal);
 				reflection = calculateReflection(ray->direction, normal, reflectDot);
-				specLight = pow(vectorDot(reflection, newStart), 20);
+				specLight = pow(vectorDot(reflection, newStart), 1);
 
 				// redIllumination = (intersectedCircle->colours->red * AMBIENT_K);
 				// greenIllumination = (intersectedCircle->colours->green * AMBIENT_K);
@@ -254,13 +256,13 @@ void calculatePixel (void){
 				// greenIllumination = (intersectedCircle->colours->green * DIFFUSE_K * lambert);
 				// blueIllumination = (intersectedCircle->colours->blue * DIFFUSE_K * lambert);
 
-				redIllumination = (intersectedCircle->colours->red * AMBIENT_K) + (intersectedCircle->colours->red * DIFFUSE_K * lambert);
-				greenIllumination = (intersectedCircle->colours->green * AMBIENT_K) + (intersectedCircle->colours->green * DIFFUSE_K * lambert);
-				blueIllumination = (intersectedCircle->colours->blue * AMBIENT_K) + (intersectedCircle->colours->blue * DIFFUSE_K * lambert);
+				// redIllumination = (intersectedCircle->colours->red * AMBIENT_K) + (intersectedCircle->colours->red * DIFFUSE_K * lambert);
+				// greenIllumination = (intersectedCircle->colours->green * AMBIENT_K) + (intersectedCircle->colours->green * DIFFUSE_K * lambert);
+				// blueIllumination = (intersectedCircle->colours->blue * AMBIENT_K) + (intersectedCircle->colours->blue * DIFFUSE_K * lambert);
 
-				// redIllumination = lightPoint->colours->red * SPECULAR_K * specLight;
-				// greenIllumination = lightPoint->colours->green * SPECULAR_K * specLight;
-				// blueIllumination = lightPoint->colours->blue * SPECULAR_K * specLight;
+				redIllumination = lightPoint->colours->red * SPECULAR_K * specLight;
+				greenIllumination = lightPoint->colours->green * SPECULAR_K * specLight;
+				blueIllumination = lightPoint->colours->blue * SPECULAR_K * specLight;
 
 				// redIllumination = ((intersectedCircle->colours->red * AMBIENT_K) + ( intersectedCircle->colours->red * DIFFUSE_K * lambert + lightPoint->colours->red * SPECULAR_K * specLight));
 				// greenIllumination = ((intersectedCircle->colours->green * AMBIENT_K) + ( intersectedCircle->colours->green * DIFFUSE_K * lambert + lightPoint->colours->green * SPECULAR_K * specLight));

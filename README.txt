@@ -1,13 +1,14 @@
 ****************************************************
 Vincent Yong		0744993
 CIS*4800 Computer Graphics	Assignment 4
-April 1st, 2016
+April 4th, 2016
 ****************************************************
 
 **************
 Complications
 **************
-There are no complications for this program. Camera only rotates clockwise to see the cube from all perspectives. 
+Specular Lighting equation never worked out when trying to implement it into the program. When I applied it, it gave me a completely white circle.
+Also, Shadows do not work as well as when trying to apply it, it didn't turn out correctly.
 
 ************
 Compilation
@@ -17,7 +18,7 @@ To compile, make sure you are in the correct directory with all the folders and 
 ***********************
 Running the program(s)
 ***********************
-to run the program, after compiling (see Compilation), type './a4 <filename>', and the program will execute. typing 'make run' will execute test program.
+to run the program, after compiling (see Compilation), type './a4 <filename>', and the program will execute. typing 'make run' will execute test program one. Typing 'make run2' will run the second example.
 
 *******************************
 Academic Integrity Pledge

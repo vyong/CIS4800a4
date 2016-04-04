@@ -15,3 +15,6 @@ ubuntu: a4.c
 
 run:
 	./a4 test.txt
+
+run2:
+	./a4 test2.txt
